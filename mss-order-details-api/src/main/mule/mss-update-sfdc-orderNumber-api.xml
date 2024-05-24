@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="mss-update-sfdc-orderNumber-apiFlow" doc:id="5a41a372-f298-4e56-add8-5bf89c72734d" >
+		<http:listener doc:name="Listener" doc:id="062beeb8-9dc8-46ac-887a-b740fec0a531" config-ref="HTTP_Listener_config" path="/test"/>
+		<db:select doc:name="Select" doc:id="9395e5cb-8bee-40d1-8ae5-520b60761f3d" config-ref="Database_Config">
+			<db:sql ><![CDATA[select OrderNumber from orders where Id IN (:ids)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[ids: vars.insertedIds]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="9b982822-6303-49ef-9d4d-eca8b40ce306">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+[{
+	Id: vars.insertedIds,
+	mulesoft_cloud__OrderNumber__c: payload.OrderNumber[0]
+}]]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<salesforce:upsert doc:name="Upsert" doc:id="efb0599f-95f1-441b-92d9-fdf4e920a4c4" config-ref="Salesforce_Config" objectType="FulfillmentOrder" externalIdFieldName="Id" />
+		<ee:transform doc:name="Transform Message" doc:id="52679688-871c-4658-805a-04658de3155c" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="previousResponse" ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+	</flow>
+</mule>

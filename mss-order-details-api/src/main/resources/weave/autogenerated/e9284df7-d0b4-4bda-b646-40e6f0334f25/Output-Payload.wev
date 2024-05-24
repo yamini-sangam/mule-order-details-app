@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_e9284df7_d0b4_4bda_b646_40e6f0334f25_Output_Payload = Array<{|  Name: String {"typeId": "FulfilledToName"} | Null,   StreetAddress: String {"typeId": "FulfilledToStreet"} | Null,   City: String {"typeId": "FulfilledToCity"} | Null,   StateProvince: String {"typeId": "FulfilledToState"} | Null,   PostalCode: String {"typeId": "FulfilledToPostalCode"} | Null,   Country: String {"typeId": "FulfilledToCountry"} | Null,   EmailAddress: String {"typeId": "FulfilledToEmailAddress"} | Null,   PhoneNumber: String {"typeId": "FulfilledToPhone"} | Null,   OrderStatus: "Draft" | "Allocated" | "Assigned" | "Pickpack" | "Fulfilled" | "Cancelled" | "Rejected" | "Printed" | "Pick Complete" | "Pack Complete",   Amount: Number {"typeId": "mulesoft_cloud__Amount__c"} | Null,   OrderNumber: String {"typeId": "mulesoft_cloud__OrderNumber__c"},   Id: String {"typeId": "Id"} | Null|}> | {| Status: String |}
+

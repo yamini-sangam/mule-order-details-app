@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="e918c6ea-1eb0-457a-9bdf-6e111dd02faa" >
+		<http:listener-connection host="0.0.0.0" port="8082" />
+	</http:listener-config>
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="6d1bc3f1-bc9a-4c2f-ae86-ae18aba8b0dc" >
+		<salesforce:basic-connection username="sdunna@miraclesoft.com" password="Ramyadunna@7" securityToken="h7tuplj9GXHpd8GgVErHnZ35" />
+	</salesforce:sfdc-config>
+	<flow name="mss-ordercreation-apiFlow" doc:id="ef29179e-41cc-44cd-83ae-2eeede40d38e" >
+		<http:listener doc:name="Listener" doc:id="26547a1b-08f3-4625-8a85-b7626f43a513" config-ref="HTTP_Listener_config" path="/orders"/>
+		<ee:transform doc:name="Transform Message" doc:id="07b128e9-59bf-414b-bc64-bee936e7ae41" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload.orders map ( order , indexOfOrder ) -> {
+	FulfilledToName: order.customerName,
+	FulfilledToStreet: order.shippingAddress.street,
+	FulfilledToCity: order.shippingAddress.city,
+	FulfilledToState: order.shippingAddress.state,
+	FulfilledToPostalCode: order.shippingAddress.zipCode,
+	FulfilledToCountry: order.shippingAddress.country,
+	FulfilledToEmailAddress: order.customerEmail,
+	FulfilledToPhone: order.customerPhone,
+	Status: order.statusCategory,
+	mulesoft_cloud__Amount__c: order.totalAmount
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<salesforce:create doc:name="Create" doc:id="5bb2905b-e830-4116-8f5b-7f717de604d9" config-ref="Salesforce_Config" type="FulfillmentOrder"/>
+		<ee:transform doc:name="Transform Message" doc:id="a768e8f7-8d61-4fb9-ad89-1b8ca8ff0b3d" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<flow-ref doc:name="Flow Reference" doc:id="483858c4-0f4b-43e2-9c4c-90bead4569fc" name="mss-sfdc-order-db-apiFlow"/>
+	</flow>
+</mule>

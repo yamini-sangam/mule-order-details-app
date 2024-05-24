@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_e9284df7_d0b4_4bda_b646_40e6f0334f25_Output_Variables_exceptionValues = Any
+

@@ -1,0 +1,14 @@
+{
+    "Name" : "",
+    "StreetAddress":"",
+    "City": "",
+    "StateProvince": "",
+    "PostalCode": "",
+    "Country": "",
+    "EmailAddress": "",
+    "PhoneNumber": "",
+    "OrderStatus": "",
+    "Amount": "",
+    "OrderNumber":""
+	
+}

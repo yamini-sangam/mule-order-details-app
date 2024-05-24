@@ -1,0 +1,52 @@
+{
+  "orders": [
+    {
+      "orderNumber": "ORD-2024-001",
+      "customerName": "Suresh Kumar",
+      "customerEmail": "suresh.kumar@example.com",
+      "customerPhone": "555-123-4567",
+      "shippingAddress": {
+        "street": "12 Gopuram Street",
+        "city": "Chennai",
+        "state": "TN",
+        "zipCode": "600001",
+        "country": "India"
+      },
+      "totalAmount": 100.00,
+      "orderDate": "2024-05-01T12:00:00Z",
+      "statusCategory": "Pending"
+    },
+    {
+      "orderNumber": "ORD-2024-002",
+      "customerName": "Lakshmi Naidu",
+      "customerEmail": "lakshmi.naidu@example.com",
+      "customerPhone": "555-987-6543",
+      "shippingAddress": {
+        "street": "25 Temple Road",
+        "city": "Hyderabad",
+        "state": "TS",
+        "zipCode": "500001",
+        "country": "India"
+      },
+      "totalAmount": 50.00,
+      "orderDate": "2024-05-02T10:30:00Z",
+      "statusCategory": "Processing"
+    },
+    {
+      "orderNumber": "ORD-2024-003",
+      "customerName": "Arjun Menon",
+      "customerEmail": "arjun.menon@example.com",
+      "customerPhone": "555-555-5555",
+      "shippingAddress": {
+        "street": "15 Coconut Grove",
+        "city": "Bangalore",
+        "state": "KA",
+        "zipCode": "560001",
+        "country": "India"
+      },
+      "totalAmount": 150.00,
+      "orderDate": "2024-05-03T14:45:00Z",
+      "statusCategory": "Shipped"
+    }
+  ]
+}
