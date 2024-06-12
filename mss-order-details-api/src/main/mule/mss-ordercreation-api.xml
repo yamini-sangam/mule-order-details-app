@@ -8,17 +8,25 @@ http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mu
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
 http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
 http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
-	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="e918c6ea-1eb0-457a-9bdf-6e111dd02faa" >
-		<http:listener-connection host="0.0.0.0" port="8082" />
-	</http:listener-config>
-	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="6d1bc3f1-bc9a-4c2f-ae86-ae18aba8b0dc" >
+
+    <!-- HTTP Listener Configuration -->
+    <http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener Config" doc:id="e9f1df46-59ad-48aa-8204-7681cfb7d8f4">
+        <http:listener-connection host="0.0.0.0" port="8082"/>
+    </http:listener-config>
+
+    <!-- Salesforce Configuration -->
+    <salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="01c2a251-ffc6-4184-8f2c-daafb2ab177e" >
 		<salesforce:basic-connection username="sdunna@miraclesoft.com" password="Ramyadunna@7" securityToken="h7tuplj9GXHpd8GgVErHnZ35" />
 	</salesforce:sfdc-config>
-	<flow name="mss-ordercreation-apiFlow" doc:id="ef29179e-41cc-44cd-83ae-2eeede40d38e" >
-		<http:listener doc:name="Listener" doc:id="26547a1b-08f3-4625-8a85-b7626f43a513" config-ref="HTTP_Listener_config" path="/orders"/>
-		<ee:transform doc:name="Transform Message" doc:id="07b128e9-59bf-414b-bc64-bee936e7ae41" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
+
+    <!-- Main Flow for Order Creation -->
+    <flow name="mss-ordercreation-apiFlow" doc:id="c9afc0c0-eb23-4fc9-ae59-9794e752b185">
+        <http:listener doc:name="HTTP Listener" doc:id="00ae3759-d3f0-4b2e-9de8-01b3dceb4948" config-ref="HTTP_Listener_config" path="/orders"/>
+        
+        <!-- Transform Incoming Order Payload -->
+        <ee:transform doc:name="Transform Incoming Order Payload" doc:id="0dbfad0d-cc58-428e-b110-ee2b51a9fdb0">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
 output application/java
 ---
 payload.orders map ( order , indexOfOrder ) -> {
@@ -33,17 +41,74 @@ payload.orders map ( order , indexOfOrder ) -> {
 	Status: order.statusCategory,
 	mulesoft_cloud__Amount__c: order.totalAmount
 }]]></ee:set-payload>
-			</ee:message>
-		</ee:transform>
-		<salesforce:create doc:name="Create" doc:id="5bb2905b-e830-4116-8f5b-7f717de604d9" config-ref="Salesforce_Config" type="FulfillmentOrder"/>
-		<ee:transform doc:name="Transform Message" doc:id="a768e8f7-8d61-4fb9-ad89-1b8ca8ff0b3d" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
+            </ee:message>
+        </ee:transform>
+        
+        <!-- Create Orders in Salesforce -->
+        <salesforce:create doc:name="Create Orders in Salesforce" doc:id="6dd12ab5-81ba-4cef-9732-f518f1189219" config-ref="Salesforce_Config" type="FulfillmentOrder"/>
+
+        <!-- Transform Salesforce Response -->
+        <ee:transform doc:name="Transform Salesforce Response" doc:id="c9cff03b-700d-4803-8fdc-d76169d70902">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 payload]]></ee:set-payload>
-			</ee:message>
-		</ee:transform>
-		<flow-ref doc:name="Flow Reference" doc:id="483858c4-0f4b-43e2-9c4c-90bead4569fc" name="mss-sfdc-order-db-apiFlow"/>
-	</flow>
+            </ee:message>
+        </ee:transform>
+
+        <!-- Reference to Another Flow for Further Processing -->
+        <flow-ref doc:name="Flow Reference to Database API Flow" doc:id="28981b26-3a09-4c3f-a74d-94036c3e4dbd" name="mss-sfdc-order-db-apiFlow"/>
+    </flow>
+
+    <!-- Flow for Updating Salesforce Order Numbers -->
+    <flow name="mss-update-sfdc-orderNumber-apiFlow" doc:id="2333fc5b-31ec-4a7c-93ac-1a9c51626045">
+        <http:listener doc:name="HTTP Listener" doc:id="b13939a2-1802-4984-a9f9-71150e530a27" config-ref="HTTP_Listener_config" path="/test"/>
+
+        <!-- Set Initial Payload -->
+        <set-payload doc:name="Set Initial Payload" doc:id="06d64078-8a6f-4bce-8ed4-142bb9bd0fb9" value="#[vars.insertedOrderIds]"/>
+
+        <!-- Initialize Result Variable -->
+        <set-variable doc:name="Initialize Result Variable" doc:id="0ca7775c-fb61-4f5f-ad5c-cd38ca49f599" variableName="orderResults" value="#[[]]"/>
+
+        <!-- Loop Through Inserted Order IDs -->
+        <foreach doc:name="For Each Inserted Order ID" doc:id="122a3859-572b-4f2d-8833-996e712fba56">
+            <!-- Select Order from Database -->
+            <db:select doc:name="Select Order from Database" doc:id="f9705f0e-b50a-47e2-8a73-814c84635a0a" config-ref="Database_Config">
+                <db:sql><![CDATA[select Id, OrderNumber from orders where Id = :id]]></db:sql>
+                <db:input-parameters><![CDATA[#[{ id: payload }]]]></db:input-parameters>
+            </db:select>
+
+            <!-- Transform Database Response -->
+            <ee:transform doc:name="Transform Database Response" doc:id="95adf30a-5978-4e53-b1c4-f70f45403edd">
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    Id: payload[0].Id,
+    mulesoft_cloud__OrderNumber__c: payload[0].OrderNumber
+}]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+
+            <!-- Append to Order Results Variable -->
+            <set-variable doc:name="Append to Order Results Variable" doc:id="ac0d396c-3d39-469a-a64f-fd51a526453f" variableName="orderResults" value="#[output application/json --- vars.orderResults + payload]"/>
+        </foreach>
+
+        <!-- Upsert Order Numbers in Salesforce -->
+        <salesforce:upsert doc:name="Upsert Order Numbers in Salesforce" doc:id="45fd640d-6281-40cf-b5d7-dc4679e7010c" config-ref="Salesforce_Config" objectType="FulfillmentOrder" externalIdFieldName="Id">
+            <salesforce:records><![CDATA[#[vars.orderResults]]]></salesforce:records>
+        </salesforce:upsert>
+
+        <!-- Transform Final Response -->
+        <ee:transform doc:name="Transform Final Response" doc:id="d5292c21-611c-4a42-9f52-a668f7597b16">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
 </mule>

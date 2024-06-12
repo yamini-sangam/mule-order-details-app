@@ -1,139 +1,147 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:db="http://www.mulesoft.org/schema/mule/db"
-	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
-	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+    xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+    xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
 http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
 http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
 http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
-	<db:config name="Database_Config" doc:name="Database Config" doc:id="486fdd79-84e5-40ed-b407-91fc8a40d364" >
-		<db:my-sql-connection host="localhost" port="3306" user="root" password="root" database="automationtesting"/>
-	</db:config>
-	<os:object-store name="Object_store" doc:name="Object store" doc:id="984f6a1e-fcb7-419e-9555-f8b01ee05b98" />
-	<flow name="mss-sfdc-order-db-apiFlow" doc:id="106d9acb-0915-4e37-9681-9383b73049a6" >
-		<http:listener doc:name="Listener" doc:id="7ea521d2-c30b-4f41-a778-f3e3b0fc9e52" path="/testing" config-ref="HTTP_Listener_config"/>
-		<set-variable value="#[payload.items map $.exception]" doc:name="Set Variable" doc:id="9e298189-b315-4047-93e6-cbe5144406dc" variableName="exceptionValues"/>
-		<choice doc:name="Choice" doc:id="fdf9b310-cd36-43c9-b8cc-255f873fc76e" >
-			<when expression="#[vars.exceptionValues contains null]">
-				<set-variable value="#[(payload.items map ((item) -> '\'' ++ item.payload.id ++ '\'') joinBy ', ')]" doc:name="Set Variable" doc:id="1e8dadbb-5a43-41bc-912c-f5997bc2eaf1" variableName="ids"/>
-				<salesforce:query doc:name="Query" doc:id="6cb9289b-5ecf-4565-865e-8a28664cdf85" config-ref="Salesforce_Config">
-					<salesforce:salesforce-query><![CDATA[SELECT 
-						Id,
-						FulfilledToName,
-						FulfilledToStreet,
-						FulfilledToCity,
-						FulfilledToState,
-						FulfilledToPostalCode,
-						FulfilledToCountry,
-						FulfilledToEmailAddress,
-						FulfilledToPhone,
-						Status,
-						mulesoft_cloud__Amount__c,
-						mulesoft_cloud__OrderNumber__c 
-					FROM 
-						FulfillmentOrder 
-					WHERE Id
-						IN (:ids)
-					]]></salesforce:salesforce-query>
-					<salesforce:parameters ><![CDATA[#[output application/java
-						---
-						{
-							ids : vars.ids
-						}]]]></salesforce:parameters>
-				</salesforce:query>
-				<ee:transform doc:name="Transform Message" doc:id="a2eb397b-8a40-4aa2-95ea-4bc4a1f9c5e8">
-					<ee:message>
-						<ee:set-payload><![CDATA[%dw 2.0
-							output application/json
-							---
-							payload map {
-								Name: $.FulfilledToName,
-								StreetAddress: $.FulfilledToStreet,
-								City: $.FulfilledToCity,
-								StateProvince: $.FulfilledToState,
-								PostalCode: $.FulfilledToPostalCode,
-								Country: $.FulfilledToCountry,
-								EmailAddress: $.FulfilledToEmailAddress,
-								PhoneNumber: $.FulfilledToPhone,
-								OrderStatus: $.Status,
-								Amount: $.mulesoft_cloud__Amount__c,
-								OrderNumber: $.mulesoft_cloud__OrderNumber__c default "",
-								Id: $.Id
-							}
-						]]></ee:set-payload>
-					</ee:message>
-				</ee:transform>
-				<foreach doc:name="For Each" doc:id="351f8aed-b573-41a1-9543-c6f8f9563e8a" >
-					<os:retrieve doc:name="Retrieve" doc:id="60fef7ff-6464-4d4f-9925-1d1ea0f2a797" key="counterKey" target="counter">
-						<os:default-value><![CDATA[#[1 as String]]]></os:default-value>
-					</os:retrieve>
-					<set-variable variableName="orderNumber" value="#['ORD-2024-' ++ (vars.counter[0] as Number) as String {format: &quot;000&quot;}]" doc:name="Generate Order Number" />
-					<logger level="INFO" doc:name="Logger" doc:id="329285bf-0e5e-4b1c-a351-d2e00b765f32" message="#[vars.orderNumber]" />
-					<choice doc:name="Choice" doc:id="256da73c-61f6-4489-babd-b47c8147c0cc" >
-						<when expression='#[payload.OrderNumber == "" or payload.OrderNumber == Null]'>
-							<set-variable value="#[payload.Id]" doc:name="Set Variable" doc:id="0820b1dd-9d21-4271-8f71-8c013d01c071" variableName="insertedIds"/>
-							<db:insert doc:name="Insert" doc:id="55b8d151-4d18-476b-8142-93b78314056c" config-ref="Database_Config">
-								<db:sql><![CDATA[INSERT INTO Orders (Id,Name, StreetAddress, City, StateProvince, PostalCode, Country, EmailAddress, PhoneNumber, OrderStatus, Amount, OrderNumber)
-									VALUES (:ID,:Name, :StreetAddress, :City, :StateProvince, :PostalCode, :Country, :EmailAddress, :PhoneNumber, :OrderStatus, :Amount, :OrderNumber)]]></db:sql>
-								<db:input-parameters><![CDATA[#[{
-									"Name": payload.Name,
-									"StreetAddress": payload.StreetAddress,
-									"City": payload.City,
-									"StateProvince": payload.StateProvince,
-									"PostalCode": payload.PostalCode,
-									"Country": payload.Country,
-									"EmailAddress": payload.EmailAddress,
-									"PhoneNumber": payload.PhoneNumber,
-									"OrderStatus": payload.OrderStatus,
-									"Amount": payload.Amount,
-									"OrderNumber": vars.orderNumber,
-									"ID": payload.Id
-								}]]]></db:input-parameters>
-							</db:insert>
-							<set-variable value="#[vars.counter as Number + 1]" doc:name="Increment Counter" doc:id="4f0f26b4-a10e-4a14-8979-671bdc95d973" variableName="counter" />
-							<os:store doc:name="Store" doc:id="0fec7cda-b87d-4fed-ac43-954445550a74" key="counterKey">
-								<os:value ><![CDATA[#[vars.counter]]]></os:value>
-							</os:store>
-							<flow-ref doc:name="Flow Reference" doc:id="3f23fd67-1a05-42f2-b258-d939a594b3de" name="mss-update-sfdc-orderNumber-apiFlow" target="result" />
-						
-</when>
-						<otherwise >
-							<ee:transform doc:name="Transform Message" doc:id="b530761e-fb14-436b-bf4f-01adbcd7c837" >
-								<ee:message >
-									<ee:set-payload ><![CDATA[%dw 2.0
+    <db:config name="Database_Config" doc:name="Database Config" doc:id="d704d429-ef93-424a-ae2f-0a711f53627d">
+        <db:my-sql-connection host="localhost" port="3306" user="root" password="root" database="automationtesting"/>
+    </db:config>
+    <os:object-store name="Object_store" doc:name="Object store" doc:id="b9b5c158-16a0-42f3-ae2d-b4524a8ff8d9" />
+	<flow name="mss-sfdc-order-db-apiFlow" doc:id="e026f897-7c48-4076-8fcf-0d31084f2920">
+        <http:listener doc:name="Listener" doc:id="0e4e8638-f2a2-49f3-95dd-7dac6b7465c5" path="/testing" config-ref="HTTP_Listener_config"/>
+        
+        <!-- Initialize IDs List -->
+        <set-variable variableName="insertedOrderIds" value="#[[]]" doc:name="Initialize IDs List" doc:id="53c02c05-04d9-4548-ba83-35503c643a2e"/>
+
+        <set-variable value="#[payload.items map $.exception]" doc:name="Set Exception Values Variable" doc:id="c4f92a19-0029-4039-bd6c-f4983dc8adc4" variableName="exceptionValues"/>
+        <choice doc:name="Check for Null Exceptions" doc:id="ee720fd6-44d8-4a9f-b70b-1a00648279b7">
+            <when expression="#[vars.exceptionValues contains null]">
+                <set-variable value="#[%dw 2.0&#10;output application/json&#10;---&#10;(payload.items filter (item) -&gt; item.payload.id != null) map ((item) -&gt; '\'' ++ item.payload.id ++ '\'') joinBy ', ']" doc:name="Set IDs Variable" doc:id="c225b5eb-ecb5-466a-8518-c8021d23a14a" variableName="ids"/>
+                <salesforce:query doc:name="Salesforce Query" doc:id="fff23e1d-68ae-4ef3-b541-6492e1c159c2" config-ref="Salesforce_Config">
+                    <salesforce:salesforce-query><![CDATA[SELECT 
+                        Id,
+                        FulfilledToName,
+                        FulfilledToStreet,
+                        FulfilledToCity,
+                        FulfilledToState,
+                        FulfilledToPostalCode,
+                        FulfilledToCountry,
+                        FulfilledToEmailAddress,
+                        FulfilledToPhone,
+                        Status,
+                        mulesoft_cloud__Amount__c,
+                        mulesoft_cloud__OrderNumber__c 
+                    FROM 
+                        FulfillmentOrder 
+                    WHERE Id
+                        IN (:ids)
+                    ]]></salesforce:salesforce-query>
+                    <salesforce:parameters ><![CDATA[#[output application/java
+                        ---
+                        {
+                            ids : vars.ids
+                        }]]]></salesforce:parameters>
+                </salesforce:query>
+                <ee:transform doc:name="Transform Salesforce Response" doc:id="8d9c51d9-d4a3-47ae-a528-8b12fc254fe7">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+                            output application/json
+                            ---
+                            payload map {
+                                Name: $.FulfilledToName,
+                                StreetAddress: $.FulfilledToStreet,
+                                City: $.FulfilledToCity,
+                                StateProvince: $.FulfilledToState,
+                                PostalCode: $.FulfilledToPostalCode,
+                                Country: $.FulfilledToCountry,
+                                EmailAddress: $.FulfilledToEmailAddress,
+                                PhoneNumber: $.FulfilledToPhone,
+                                OrderStatus: $.Status,
+                                Amount: $.mulesoft_cloud__Amount__c,
+                                OrderNumber: $.mulesoft_cloud__OrderNumber__c default "",
+                                Id: $.Id
+                            }
+                        ]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+                <foreach doc:name="Process Each Order" doc:id="c80c4dad-f1de-4d82-b3bf-31d9a7036dc1">
+                    <os:retrieve doc:name="Retrieve Counter" doc:id="fdc13c7d-0fbd-4f43-a04f-2f91ee73863a" key="counterKey" target="counter">
+                        <os:default-value><![CDATA[#[1 as String]]]></os:default-value>
+                    </os:retrieve>
+                    <set-variable variableName="orderNumber" value="#['ORD-2024-' ++ (vars.counter[0] as Number) as String {format: '000'}]" doc:name="Generate Order Number" />
+                    <logger level="INFO" doc:name="Log Order Number" doc:id="8dd3244f-10f1-4987-a2f4-455476fc87ae" message="#[vars.orderNumber]" />
+                    <choice doc:name="Check Order Number" doc:id="aad7e3f5-a3d0-44b8-a8f0-7d7cf002b2f1">
+                        <when expression='#[payload.OrderNumber == "" or payload.OrderNumber == Null]'>
+                            <!-- Append each ID to the list with explicit output type -->
+                            <set-variable variableName="insertedOrderIds" value="#[output application/json --- ((vars.insertedIds default []) ++ [payload.Id])]" doc:name="Append ID to List" doc:id="a8f6d071-10a0-4fc5-8cc2-074489dfaa8b"/>
+
+                            <db:insert doc:name="Insert Order to Database" doc:id="a5389c77-51d9-4437-9074-03f4e4e58066" config-ref="Database_Config">
+                                <db:sql><![CDATA[INSERT INTO Orders (Id,Name, StreetAddress, City, StateProvince, PostalCode, Country, EmailAddress, PhoneNumber, OrderStatus, Amount, OrderNumber)
+                                    VALUES (:ID,:Name, :StreetAddress, :City, :StateProvince, :PostalCode, :Country, :EmailAddress, :PhoneNumber, :OrderStatus, :Amount, :OrderNumber)]]></db:sql>
+                                <db:input-parameters><![CDATA[#[{
+                                    "Name": payload.Name,
+                                    "StreetAddress": payload.StreetAddress,
+                                    "City": payload.City,
+                                    "StateProvince": payload.StateProvince,
+                                    "PostalCode": payload.PostalCode,
+                                    "Country": payload.Country,
+                                    "EmailAddress": payload.EmailAddress,
+                                    "PhoneNumber": payload.PhoneNumber,
+                                    "OrderStatus": payload.OrderStatus,
+                                    "Amount": payload.Amount,
+                                    "OrderNumber": vars.orderNumber,
+                                    "ID": payload.Id
+                                }]]]></db:input-parameters>
+                            </db:insert>
+                            <set-variable value="#[vars.counter as Number + 1]" doc:name="Increment Counter" doc:id="77afd587-3b3a-4862-81de-dfe0293b4c8b" variableName="counter" />
+                            <os:store doc:name="Store Counter" doc:id="a5885b3b-b368-415f-b260-202fc357a49a" key="counterKey">
+                                <os:value><![CDATA[#[vars.counter]]]></os:value>
+                            </os:store>
+                        </when>
+                        <otherwise>
+                            <ee:transform doc:name="Order Number Exists Response" doc:id="a08b5e6f-0bf7-477a-bb19-0dffe0de95ba">
+                                <ee:message>
+                                    <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 {
-	status: "Order Number already exists"
+    status: "Order Number already exists"
 }]]></ee:set-payload>
-								</ee:message>
-							</ee:transform>
-						</otherwise>
-					</choice>
-				</foreach>
-				<ee:transform doc:name="Transform Message" doc:id="ac5a6320-9bc9-486c-8534-5383610ed57f">
-					<ee:message>
-						<ee:set-payload><![CDATA[%dw 2.0
+                                </ee:message>
+                            </ee:transform>
+                        </otherwise>
+                    </choice>
+                </foreach>
+                <flow-ref doc:name="Update Order Number in Salesforce" doc:id="bdb6df8f-7bdf-41df-9e63-ed5ca62ac0e7" name="mss-update-sfdc-orderNumber-apiFlow" target="result" />
+				<ee:transform doc:name="Transform Final Response" doc:id="21f1c13e-f12f-4185-9ecc-3ac4a70ad4a7">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-vars.result						]]></ee:set-payload>
-					</ee:message>
-				</ee:transform>
-			</when>
-			<otherwise >
-				<ee:transform doc:name="Transform Message" doc:id="03704171-6b56-46d6-8d1f-775ae290e2e5" >
-					<ee:message >
-						<ee:set-payload ><![CDATA[%dw 2.0
-							output application/json
-							---
-							{
-								Status: "No New Records Found"
-							}]]></ee:set-payload>
-					</ee:message>
-				</ee:transform>
-			</otherwise>
-		</choice>
-	</flow>
+{
+    insertedIds: vars.insertedOrderIds,
+    result: vars.orderResults
+}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </when>
+            <otherwise>
+                <ee:transform doc:name="No New Records Response" doc:id="5b674059-0f74-49f5-9be3-0a631d4e3337">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+                            output application/json
+                            ---
+                            {
+                                Status: "No New Records Found"
+                            }]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </otherwise>
+        </choice>
+    </flow>
 </mule>
