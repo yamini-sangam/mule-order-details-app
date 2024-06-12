@@ -42,7 +42,16 @@ payload.orders map ( order , indexOfOrder ) -> {
 	mulesoft_cloud__Amount__c: order.totalAmount
 }]]></ee:set-payload>
             </ee:message>
-        </ee:transform>
+			<ee:variables >
+				<ee:set-variable variableName="totalOrders" ><![CDATA[%dw 2.0
+output application/json
+---
+sizeOf(payload.orders)
+
+]]></ee:set-variable>
+			</ee:variables>
+        
+</ee:transform>
         
         <!-- Create Orders in Salesforce -->
         <salesforce:create doc:name="Create Orders in Salesforce" doc:id="6dd12ab5-81ba-4cef-9732-f518f1189219" config-ref="Salesforce_Config" type="FulfillmentOrder"/>

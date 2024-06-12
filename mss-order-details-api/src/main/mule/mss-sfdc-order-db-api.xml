@@ -78,7 +78,7 @@ http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/cu
                     <choice doc:name="Check Order Number" doc:id="aad7e3f5-a3d0-44b8-a8f0-7d7cf002b2f1">
                         <when expression='#[payload.OrderNumber == "" or payload.OrderNumber == Null]'>
                             <!-- Append each ID to the list with explicit output type -->
-                            <set-variable variableName="insertedOrderIds" value="#[output application/json --- ((vars.insertedIds default []) ++ [payload.Id])]" doc:name="Append ID to List" doc:id="a8f6d071-10a0-4fc5-8cc2-074489dfaa8b"/>
+                            <set-variable variableName="insertedOrderIds" value="#[output application/json --- vars.insertedOrderIds + payload.Id]" doc:name="Append ID to List" doc:id="a8f6d071-10a0-4fc5-8cc2-074489dfaa8b"/>
 
                             <db:insert doc:name="Insert Order to Database" doc:id="a5389c77-51d9-4437-9074-03f4e4e58066" config-ref="Database_Config">
                                 <db:sql><![CDATA[INSERT INTO Orders (Id,Name, StreetAddress, City, StateProvince, PostalCode, Country, EmailAddress, PhoneNumber, OrderStatus, Amount, OrderNumber)
@@ -117,13 +117,15 @@ output application/json
                         </otherwise>
                     </choice>
                 </foreach>
-                <flow-ref doc:name="Update Order Number in Salesforce" doc:id="bdb6df8f-7bdf-41df-9e63-ed5ca62ac0e7" name="mss-update-sfdc-orderNumber-apiFlow" target="result" />
+                <flow-ref doc:name="Update Order Number in Salesforce" doc:id="bdb6df8f-7bdf-41df-9e63-ed5ca62ac0e7" name="mss-update-sfdc-orderNumber-apiFlow" target="orderResults" />
 				<ee:transform doc:name="Transform Final Response" doc:id="21f1c13e-f12f-4185-9ecc-3ac4a70ad4a7">
                     <ee:message>
                         <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 {
+    totalOrders: vars.totalOrders,
+    totalOrdersInserted: sizeOf(vars.insertedOrderIds),
     insertedIds: vars.insertedOrderIds,
     result: vars.orderResults
 }]]></ee:set-payload>
